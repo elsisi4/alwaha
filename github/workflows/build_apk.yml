@@ -1,0 +1,45 @@
+name: Build Alwaha APKs
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies & Setup Android
+        run: |
+          flutter create --platforms android,web .
+          dart run tool/setup_android.dart
+          flutter pub get
+
+      - name: Build Admin APK
+        run: flutter build apk --release -t lib/main_admin.dart
+
+      - name: Build Distributor APK
+        run: flutter build apk --release -t lib/main_distributor.dart
+
+      - name: Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: alwaha-release-apks
+          path: build/app/outputs/flutter-apk/*.apk
