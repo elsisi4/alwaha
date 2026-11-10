@@ -69,7 +69,11 @@ void _patchGradle(File file, String block) {
   stdout.writeln('تم تعديل ${file.path}');
 }
 
-const _ktsFlavors = '''    flavorDimensions += "app"
+const _ktsFlavors = '''    buildFeatures {
+        resValues = true
+    }
+
+    flavorDimensions += "app"
     productFlavors {
         create("distributor") {
             dimension = "app"
@@ -84,7 +88,11 @@ const _ktsFlavors = '''    flavorDimensions += "app"
     }
 ''';
 
-const _groovyFlavors = '''    flavorDimensions "app"
+const _groovyFlavors = '''    buildFeatures {
+        resValues true
+    }
+
+    flavorDimensions "app"
     productFlavors {
         distributor {
             dimension "app"

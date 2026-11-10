@@ -2,15 +2,25 @@ name: Build Alwaha APKs
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "supabase/**"
   workflow_dispatch:
+
+concurrency:
+  group: build-apk
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
+    env:
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
     steps:
       - name: Checkout repository
@@ -19,42 +29,111 @@ jobs:
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          distribution: "zulu"
+          java-version: "17"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.9'
-          channel: 'stable'
+          flutter-version: "3.47.9"
+          channel: "stable"
           cache: true
 
-      - name: Install dependencies & Setup Android
+      - name: Generate env.json from Secrets
         run: |
-          flutter create --platforms android,web .
+          echo '{
+            "SUPABASE_URL": "${{ secrets.SUPABASE_URL }}",
+            "SUPABASE_ANON_KEY": "${{ secrets.SUPABASE_ANON_KEY }}"
+          }' > env.json
+          
+          jq -e '.SUPABASE_URL and .SUPABASE_ANON_KEY' env.json > /dev/null \
+            || { echo "::error::فشل توليد env.json أو أن القيم فارغة في GitHub Secrets"; exit 1; }
+
+      - name: Prepare Android project
+        run: |
+          if [ ! -f android/app/build.gradle.kts ]; then
+            flutter create --platforms android .
+          fi
           dart run tool/setup_android.dart
           flutter pub get
 
+      - name: Configure release signing
+        env:
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::لا يوجد مفتاح توقيع في Secrets. سيُوقَّع الملف بمفتاح مؤقت يتغير كل مرة، ولن يتحدث التطبيق المثبّت فوقه. راجع docs/GITHUB.md"
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/alwaha-release.jks
+          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=alwaha-release.jks\n' \
+            "$STORE_PASSWORD" "$KEY_PASSWORD" "$KEY_ALIAS" > android/key.properties
+
+      - name: Compute version
+        id: version
+        run: |
+          echo "name=1.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "code=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Analyze (errors fail the build)
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Run Flutter tests
+        run: flutter test
+        continue-on-error: true
+
       - name: Build Admin APK
-        run: flutter build apk --release --flavor admin -t lib/main_admin.dart
+        run: >
+          flutter build apk --release --flavor admin -t lib/main_admin.dart
+          --dart-define-from-file=env.json
+          --build-name=${{ steps.version.outputs.name }}
+          --build-number=${{ steps.version.outputs.code }}
 
       - name: Build Distributor APK
-        run: flutter build apk --release --flavor distributor -t lib/main_distributor.dart
+        run: >
+          flutter build apk --release --flavor distributor -t lib/main_distributor.dart
+          --dart-define-from-file=env.json
+          --build-name=${{ steps.version.outputs.name }}
+          --build-number=${{ steps.version.outputs.code }}
 
-      - name: Upload APK Artifacts
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: alwaha-release-apks
           path: build/app/outputs/flutter-apk/*.apk
 
-      - name: Create GitHub Release and Upload APKs
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             build/app/outputs/flutter-apk/app-admin-release.apk
             build/app/outputs/flutter-apk/app-distributor-release.apk
-          tag_name: v1.0.${{ github.run_number }}
-          name: "Alwaha Release v1.0.${{ github.run_number }}"
-          body: "إصدار جديد تلقائي لنسختي الإدارة والمندوبين."
+          tag_name: v${{ steps.version.outputs.name }}
+          name: "الواحة v${{ steps.version.outputs.name }}"
+          body: ${{ github.event.head_commit.message || 'إصدار جديد لنسختي الإدارة والمندوب.' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish release to the apps (optional)
+        if: ${{ env.SUPABASE_SERVICE_ROLE_KEY != '' }}
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          NOTES: ${{ github.event.head_commit.message }}
+        run: |
+          SUPABASE_URL=$(jq -r .SUPABASE_URL env.json)
+          for app in distributor admin; do
+            URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION_NAME}/app-${app}-release.apk"
+            BODY=$(jq -n --arg app "$app" --argjson code "$VERSION_CODE" \
+              --arg name "$VERSION_NAME" --arg url "$URL" --arg notes "$NOTES" \
+              '{app: $app, version_code: $code, version_name: $name, apk_url: $url, notes: $notes}')
+            curl -sS -f -X POST "$SUPABASE_URL/rest/v1/app_releases" \
+              -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Content-Type: application/json" \
+              -H "Prefer: return=minimal" \
+              -d "$BODY"
+            echo "تم نشر $app رقم $VERSION_CODE للتطبيقات"
+          done

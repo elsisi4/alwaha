@@ -1,0 +1,28 @@
+name: Database tests
+
+on:
+  pull_request:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "supabase/**"
+      - ".github/workflows/database-tests.yml"
+  workflow_dispatch:
+
+jobs:
+  pgtap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase (applies all migrations)
+        run: supabase start
+
+      - name: Run pgTAP tests
+        run: supabase test db

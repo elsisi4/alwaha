@@ -56,3 +56,7 @@ flutter run -d chrome -t lib/main_admin.dart --dart-define=SUPABASE_URL=... --da
 flutter run -d chrome -t lib/main_distributor.dart --dart-define-from-file=env.json
 flutter run -d chrome -t lib/main_admin.dart --dart-define-from-file=env.json
 ```
+
+## البناء السحابي والتحديثات
+
+راجع [`docs/GITHUB.md`](docs/GITHUB.md): البناء على GitHub Actions، مفتاح التوقيع، ونشر التحديثات.
