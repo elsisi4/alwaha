@@ -33,10 +33,10 @@ jobs:
           flutter pub get
 
       - name: Build Admin APK
-        run: flutter build apk --release -t lib/main_admin.dart
+        run: flutter build apk --release --flavor admin -t lib/main_admin.dart
 
       - name: Build Distributor APK
-        run: flutter build apk --release -t lib/main_distributor.dart
+        run: flutter build apk --release --flavor distributor -t lib/main_distributor.dart
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
