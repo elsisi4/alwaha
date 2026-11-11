@@ -39,15 +39,11 @@ jobs:
           channel: "stable"
           cache: true
 
-      - name: Generate env.json from Secrets
+      - name: Check Supabase config (env.json)
         run: |
-          echo '{
-            "SUPABASE_URL": "${{ secrets.SUPABASE_URL }}",
-            "SUPABASE_ANON_KEY": "${{ secrets.SUPABASE_ANON_KEY }}"
-          }' > env.json
-          
+          test -f env.json || { echo "::error::ملف env.json غير موجود في المستودع"; exit 1; }
           jq -e '.SUPABASE_URL and .SUPABASE_ANON_KEY' env.json > /dev/null \
-            || { echo "::error::فشل توليد env.json أو أن القيم فارغة في GitHub Secrets"; exit 1; }
+            || { echo "::error::env.json ينقصه SUPABASE_URL أو SUPABASE_ANON_KEY"; exit 1; }
 
       - name: Prepare Android project
         run: |

@@ -4,7 +4,10 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'admin/admin_dashboard.dart';
+import 'accounting/accountant_home.dart';
 import 'auth/distributor_auth.dart';
+import 'theme/alwaha_theme.dart';
+import 'theme/glass_widgets.dart';
 import 'production/production_home.dart';
 import 'update/app_update.dart';
 import 'portal/role_home_page.dart';
@@ -58,102 +61,12 @@ class AlWahaApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xfff8fbf8),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xff176b55),
-          primary: const Color(0xff176b55),
-          secondary: const Color(0xff57bdf3),
-          tertiary: const Color(0xff8a6d00),
-          surface: Colors.white,
-          error: const Color(0xffb3261e),
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xfff8fbf8),
-          foregroundColor: Color(0xff174d3c),
-          centerTitle: false,
-          elevation: 0,
-          scrolledUnderElevation: 1,
-          titleTextStyle: TextStyle(
-            color: Color(0xff174d3c),
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
-          iconTheme: IconThemeData(color: Color(0xff176b55)),
-        ),
-        cardTheme: CardThemeData(
-          color: Colors.white,
-          elevation: 0,
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: Color(0xffe4eee7)),
-          ),
-        ),
-        dividerTheme: const DividerThemeData(
-          color: Color(0xffe7eee9),
-          thickness: 1,
-          space: 1,
-        ),
-        listTileTheme: const ListTileThemeData(
-          iconColor: Color(0xff28745d),
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          minLeadingWidth: 24,
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xfffcfefc),
-          labelStyle: const TextStyle(color: Color(0xff65766c)),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xffdce8df)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xff176b55), width: 1.7),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xffb3261e)),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(0, 48),
-            foregroundColor: Colors.white,
-            backgroundColor: const Color(0xff176b55),
-            textStyle: const TextStyle(fontWeight: FontWeight.w700),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(0, 46),
-            foregroundColor: const Color(0xff176b55),
-            side: const BorderSide(color: Color(0xffc9ded1)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
-        ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Color(0xff176b55),
-          foregroundColor: Colors.white,
-          shape: StadiumBorder(),
-        ),
-        tabBarTheme: const TabBarThemeData(
-          labelColor: Color(0xff176b55),
-          unselectedLabelColor: Color(0xff718078),
-          indicatorColor: Color(0xff22b34b),
-          dividerColor: Color(0xffe4eee7),
-        ),
-        snackBarTheme: SnackBarThemeData(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xff174d3c),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
+      theme: buildAlwahaTheme(),
+      builder: (context, child) => Stack(
+        children: [
+          const Positioned.fill(child: AnimatedGlowBackground()),
+          if (child != null) SafeArea(top: false, child: child),
+        ],
       ),
       home: _ConfigurationGate(supabaseConfigured: supabaseConfigured, mode: mode),
     );
@@ -236,6 +149,7 @@ class _RoleRouter extends StatelessWidget {
               );
             }
             if (role == 'production_manager') return const ProductionHome();
+            if (role == 'accountant') return const AccountantHome();
             if (role == 'admin') return const AdminDashboard();
             if (role == 'pending') return const _AccessDenied();
             return RoleHomePage(role: role);
@@ -312,7 +226,10 @@ class _SignInPageState extends State<_SignInPage> {
     });
     try {
       await Supabase.instance.client.auth.signInWithPassword(
-        email: widget.mode == AppMode.distributor
+        // الدخول يقبل رقم الهاتف أو البريد: كل حساب مسجل برقمه يدخل برقمه
+        // حتى بعد أن يمنحه المدير دورًا إداريًا.
+        email: widget.mode == AppMode.distributor ||
+                !_email.text.contains('@')
             ? phoneToEmail(_email.text)
             : _email.text.trim(),
         password: _password.text,
@@ -328,14 +245,7 @@ class _SignInPageState extends State<_SignInPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-              colors: [Color(0xffeaf6ee), Color(0xfff7faf7), Color(0xffeef8fc)],
-            ),
-          ),
+        body: SafeArea(
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
@@ -345,28 +255,20 @@ class _SignInPageState extends State<_SignInPage> {
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(28),
-                    side: const BorderSide(color: Color(0xffdcebe1)),
+                    side: const BorderSide(color: AlwahaColors.glassBorder),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(26),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          width: 76,
-                          height: 76,
-                          decoration: BoxDecoration(
-                            color: const Color(0xffe8f5ec),
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: const Icon(Icons.spa_rounded, size: 42, color: Color(0xff176b55)),
-                        ),
+                        const LogoMark(size: 104),
                         const SizedBox(height: 16),
                         Text('الواحة', style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: const Color(0xff176b55), fontWeight: FontWeight.w800)),
+                          color: AlwahaColors.gold, fontWeight: FontWeight.w900)),
                         const SizedBox(height: 4),
                         Text(widget.mode == AppMode.distributor ? 'تطبيق المندوب' : 'إدارة المصنع والتوزيع', style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xff6a7b71))),
+                          color: AlwahaColors.textMuted)),
                         const SizedBox(height: 26),
                   TextField(
                     controller: _email,
@@ -376,7 +278,7 @@ class _SignInPageState extends State<_SignInPage> {
                     decoration: InputDecoration(
                       labelText: widget.mode == AppMode.distributor
                           ? 'رقم الهاتف'
-                          : 'البريد الإلكتروني',
+                          : 'البريد الإلكتروني أو رقم الهاتف',
                     ),
                   ),
                   const SizedBox(height: 12),

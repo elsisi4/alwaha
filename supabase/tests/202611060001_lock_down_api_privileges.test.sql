@@ -14,9 +14,10 @@ select is(
 select is(
   (select count(*) from information_schema.routine_privileges
    where routine_schema = 'public' and grantee = 'anon'
-     and privilege_type = 'EXECUTE'),
+     and privilege_type = 'EXECUTE'
+     and routine_name not in ('list_signup_outlets', 'get_latest_release')),
   0::bigint,
-  'anon لا ينفذ أي دالة في public'
+  'anon لا ينفذ أي دالة في public عدا دالتي التسجيل والتحديث المسموحتين'
 );
 select is(
   (select count(*) from information_schema.role_table_grants g

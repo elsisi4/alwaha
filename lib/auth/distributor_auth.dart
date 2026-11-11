@@ -214,7 +214,7 @@ class PendingApprovalPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.hourglass_top_rounded,
-                  size: 56, color: Color(0xff176b55)),
+                  size: 56, color: Color(0xff22d3b6)),
               const SizedBox(height: 16),
               Text('تم استلام طلب تسجيلك',
                   style: Theme.of(context).textTheme.titleLarge),

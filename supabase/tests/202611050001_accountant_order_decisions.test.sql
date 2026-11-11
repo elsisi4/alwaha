@@ -208,11 +208,16 @@ select throws_ok(
   'The user is not authorized to review orders',
   'المندوب لا يعتمد طلبه'
 );
+select set_config(
+  'test.reject_order_id',
+  (select order_id::text from dec_orders where purpose = 'acct_reject'),
+  true
+);
 set local role authenticated;
 select set_config(
   'test.visible_reason',
   (select status_reason from public.role_orders
-   where id = (select order_id from dec_orders where purpose = 'acct_reject')),
+   where id = current_setting('test.reject_order_id')::uuid),
   true
 );
 reset role;

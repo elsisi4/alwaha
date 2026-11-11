@@ -2,60 +2,145 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'catalog_recipes_page.dart';
+import '../accounting/outlet_accounts_page.dart';
+import 'admin_home.dart';
 import 'app_releases_page.dart';
 import 'signup_requests_page.dart';
 import 'operational_workflows_page.dart';
-import '../portal/role_home_page.dart';
 import '../pricing/pricing_page.dart';
 
-class AdminDashboard extends StatelessWidget {
+class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
 
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-        length: 6,
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('إدارة الواحة'),
-            actions: [
-              IconButton(
-                tooltip: 'تسجيل الخروج',
-                onPressed: () => Supabase.instance.client.auth.signOut(),
-                icon: const Icon(Icons.logout),
-              ),
-            ],
-            bottom: const TabBar(
-              isScrollable: true,
-              tabs: [
-                Tab(icon: Icon(Icons.receipt_long), text: 'الطلبات'),
-                Tab(icon: Icon(Icons.factory_outlined), text: 'الإنتاج والتوزيع'),
-                Tab(icon: Icon(Icons.inventory_2_outlined), text: 'المخزون والبرانيك'),
-                Tab(icon: Icon(Icons.payments_outlined), text: 'الحسابات والتحصيل'),
-                Tab(icon: Icon(Icons.how_to_reg), text: 'طلبات التسجيل'),
-                Tab(icon: Icon(Icons.settings_outlined), text: 'الإعدادات'),
-              ],
+  State<AdminDashboard> createState() => _AdminDashboardState();
+}
+
+class _AdminDashboardState extends State<AdminDashboard> {
+  int _index = 0;
+
+  static const _titles = [
+    'لوحة التحكم',
+    'الطلبات',
+    'الإنتاج والتوزيع',
+    'الحسابات والتحصيل',
+    'المزيد',
+  ];
+
+  Widget _page() => switch (_index) {
+        0 => AdminHome(onOpen: (index) => setState(() => _index = index)),
+        1 => const OperationalWorkflowsPage(
+            role: 'admin',
+            section: OpsSection.orders,
+          ),
+        2 => const OperationalWorkflowsPage(
+            role: 'admin',
+            section: OpsSection.production,
+          ),
+        3 => const OutletAccountsPage(),
+        _ => const _MoreMenu(),
+      };
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(
+          title: Text(_titles[_index]),
+          actions: [
+            IconButton(
+              tooltip: 'تسجيل الخروج',
+              onPressed: () => Supabase.instance.client.auth.signOut(),
+              icon: const Icon(Icons.logout),
+            ),
+          ],
+        ),
+        body: KeyedSubtree(key: ValueKey(_index), child: _page()),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _index,
+          onDestinationSelected: (value) => setState(() => _index = value),
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard),
+              label: 'الرئيسية',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long),
+              label: 'الطلبات',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.factory_outlined),
+              selectedIcon: Icon(Icons.factory),
+              label: 'الإنتاج',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.account_balance_wallet_outlined),
+              selectedIcon: Icon(Icons.account_balance_wallet),
+              label: 'الحسابات',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.apps_outlined),
+              selectedIcon: Icon(Icons.apps),
+              label: 'المزيد',
+            ),
+          ],
+        ),
+      );
+}
+
+/// المزيد: المخزون والبرانيك، طلبات تسجيل المناديب، والإعدادات.
+class _MoreMenu extends StatelessWidget {
+  const _MoreMenu();
+
+  void _open(BuildContext context, String title, Widget page) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(title)),
+          body: page,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _SettingsTile(
+            icon: Icons.how_to_reg,
+            title: 'طلبات تسجيل المناديب',
+            subtitle: 'الموافقة على المناديب الجدد أو رفضهم',
+            onTap: () => _open(
+              context,
+              'طلبات تسجيل المناديب',
+              const SignupRequestsPage(),
             ),
           ),
-          body: const TabBarView(
-            children: [
-              OperationalWorkflowsPage(
-                role: 'admin',
-                section: OpsSection.orders,
-              ),
-              OperationalWorkflowsPage(
-                role: 'admin',
-                section: OpsSection.production,
-              ),
-              OperationalWorkflowsPage(
+          _SettingsTile(
+            icon: Icons.inventory_2_outlined,
+            title: 'المخزون والبرانيك والمرتجعات',
+            subtitle: 'أرصدة المخزون، حركة البرانيك، قرارات المرتجعات',
+            onTap: () => _open(
+              context,
+              'المخزون والبرانيك',
+              const OperationalWorkflowsPage(
                 role: 'admin',
                 section: OpsSection.stock,
               ),
-              RoleHomePage(role: 'accountant', embedded: true),
-              SignupRequestsPage(),
-              _SettingsMenu(),
-            ],
+            ),
           ),
-        ),
+          _SettingsTile(
+            icon: Icons.settings_outlined,
+            title: 'الإعدادات',
+            subtitle: 'الأسعار، الأصناف والمنافذ، المستخدمون، الوصفات، التحديثات',
+            onTap: () => _open(
+              context,
+              'الإعدادات',
+              const _SettingsMenu(),
+            ),
+          ),
+        ],
       );
 }
 
@@ -201,7 +286,7 @@ class _CatalogManagementState extends State<_CatalogManagement> {
         _CatalogKind.customerTypes => 'أنواع العملاء',
         _CatalogKind.distributors => 'الموزعون',
         _CatalogKind.pickupLocations => 'منافذ الاستلام',
-        _CatalogKind.outlets => 'المنافذ الخارجية',
+        _CatalogKind.outlets => 'المنافذ',
       };
 
   void _reload() {
@@ -370,11 +455,8 @@ class _CatalogManagementState extends State<_CatalogManagement> {
                 DropdownMenuItem(
                     value: _CatalogKind.distributors, child: Text('الموزعون')),
                 DropdownMenuItem(
-                    value: _CatalogKind.pickupLocations,
-                    child: Text('منافذ الاستلام')),
-                DropdownMenuItem(
                     value: _CatalogKind.outlets,
-                    child: Text('المنافذ الخارجية')),
+                    child: Text('المنافذ (أم بيومي، بهتيم، المصنع، ومنفذ جديد)')),
               ],
               onChanged: (value) {
                 if (value != null) {
@@ -619,7 +701,8 @@ class _CatalogEditorState extends State<_CatalogEditor> {
     if (!_formKey.currentState!.validate()) return;
     if ((_isDistributor && _customerTypeId == null) ||
         (_isOutlet &&
-            (_pickupLocationId == null || _allowedRoles.isEmpty))) {
+            (_allowedRoles.isEmpty ||
+                (widget.row != null && _pickupLocationId == null)))) {
       setState(() => _error = 'أكمل الحقول المطلوبة.');
       return;
     }
@@ -666,6 +749,13 @@ class _CatalogEditorState extends State<_CatalogEditor> {
                     'vehicle_group': _vehicleGroups[outletId] ?? 'shared',
                   })
               .toList(),
+        });
+      } else if (_isOutlet && id == null) {
+        // منفذ جديد: يُنشأ مكان الاستلام والمنفذ معًا في خطوة واحدة.
+        await client.rpc('create_outlet', params: {
+          'p_name': _name.text.trim(),
+          'p_outlet_type': _outletType,
+          'p_allowed_roles': _allowedRoles.toList(),
         });
       } else if (id == null) {
         await client.from(_tableName).insert(values);
@@ -838,27 +928,15 @@ class _CatalogEditorState extends State<_CatalogEditor> {
                     decoration: const InputDecoration(labelText: 'نوع المنفذ'),
                     items: const [
                       DropdownMenuItem(
-                          value: 'external', child: Text('منفذ خارجي')),
+                          value: 'external',
+                          child: Text('منفذ خارجي (يشتري بسعر خاص)')),
                       DropdownMenuItem(
                           value: 'factory_pickup',
-                          child: Text('استلام من المصنع')),
+                          child: Text('المصنع (استلام مباشر)')),
                     ],
                     onChanged: (value) {
                       if (value != null) setState(() => _outletType = value);
                     },
-                  ),
-                  DropdownButtonFormField<String>(
-                    value: _pickupLocationId,
-                    decoration:
-                        const InputDecoration(labelText: 'منفذ الاستلام'),
-                    items: widget.pickupLocations
-                        .map((item) => DropdownMenuItem<String>(
-                              value: item['id'] as String,
-                              child: Text(item['name'] as String),
-                            ))
-                        .toList(),
-                    onChanged: (value) =>
-                        setState(() => _pickupLocationId = value),
                   ),
                   const SizedBox(height: 8),
                   Text('الأدوار المسموح بها على هذا المنفذ',

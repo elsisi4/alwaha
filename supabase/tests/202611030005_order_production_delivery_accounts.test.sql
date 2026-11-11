@@ -249,6 +249,12 @@ select lives_ok(
   'يتم تسجيل تسليم فعلي للموزع'
 );
 reset role;
+-- مسؤول منفذ المصنع لا يرى الأرصدة المالية بتصميم النظام، فنقرأ الحساب بصفة المدير
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-000000000101","role":"authenticated"}',
+  true
+);
 select is(
   (select balance
    from public.operational_distributor_account_balances

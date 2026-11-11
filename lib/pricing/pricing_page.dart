@@ -40,7 +40,10 @@ class _PricingPageState extends State<PricingPage> {
       client.from('products').select('id, code, name').eq('is_active', true).order('name'),
       client.from('customer_types').select('id, name').order('name'),
       client.from('pickup_locations').select('id, name').order('name'),
-      client.from('external_outlets').select('id, name').order('name'),
+      client
+          .from('external_outlets')
+          .select('id, name, outlet_type, pickup_location_id')
+          .order('name'),
       client
           .from('outlet_account_balances')
           .select('external_outlet_id, external_outlet_name, factory_purchase_total, payments_total, balance')
@@ -247,6 +250,38 @@ class _PolicyEditorState extends State<_PolicyEditor> {
 
   bool get _isOutlet => _scope == 'external_outlet';
 
+  /// واجهة واحدة للمستخدم: «منفذ» (المصنع أو أم بيومي أو بهتيم أو أي منفذ جديد)
+  /// أو «نوع عميل». داخليًا: المصنع سياسة موقع استلام، والمنافذ الخارجية سياسة منفذ.
+  String get _mode => _scope == 'customer_type' ? 'customer_type' : 'place';
+
+  String? get _placeValue {
+    if (_scope == 'external_outlet') return _targetId;
+    if (_scope == 'pickup_location') {
+      for (final outlet in widget.data.outlets) {
+        if (outlet['outlet_type'] == 'factory_pickup' &&
+            outlet['pickup_location_id'] == _targetId) {
+          return outlet['id'] as String;
+        }
+      }
+    }
+    return null;
+  }
+
+  void _choosePlace(String? outletId) {
+    if (outletId == null) return;
+    final outlet =
+        widget.data.outlets.firstWhere((item) => item['id'] == outletId);
+    setState(() {
+      if (outlet['outlet_type'] == 'factory_pickup') {
+        _scope = 'pickup_location';
+        _targetId = outlet['pickup_location_id'] as String?;
+      } else {
+        _scope = 'external_outlet';
+        _targetId = outletId;
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -393,45 +428,57 @@ class _PolicyEditorState extends State<_PolicyEditor> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _scope,
+                  value: _mode,
                   decoration: const InputDecoration(labelText: 'تطبيق السياسة على'),
                   items: const [
                     DropdownMenuItem(
-                        value: 'customer_type', child: Text('نوع العميل')),
+                        value: 'place',
+                        child: Text('منفذ (المصنع، أم بيومي، بهتيم)')),
                     DropdownMenuItem(
-                        value: 'pickup_location', child: Text('منفذ الاستلام')),
-                    DropdownMenuItem(
-                        value: 'external_outlet', child: Text('منفذ خارجي')),
+                        value: 'customer_type',
+                        child: Text('نوع عميل (سعر عام)')),
                   ],
                   onChanged: widget.policy == null
                       ? (value) => setState(() {
-                            _scope = value!;
+                            _scope = value == 'customer_type'
+                                ? 'customer_type'
+                                : 'external_outlet';
                             _targetId = null;
                           })
                       : null,
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _targets.any((item) => item['id'] == _targetId)
-                      ? _targetId
-                      : null,
-                  decoration: InputDecoration(
-                    labelText: switch (_scope) {
-                      'customer_type' => 'نوع العميل',
-                      'pickup_location' => 'منفذ الاستلام',
-                      _ => 'المنفذ الخارجي',
-                    },
+                if (_mode == 'customer_type')
+                  DropdownButtonFormField<String>(
+                    key: const ValueKey('target-customer-type'),
+                    value: widget.data.customerTypes
+                            .any((item) => item['id'] == _targetId)
+                        ? _targetId
+                        : null,
+                    decoration: const InputDecoration(labelText: 'نوع العميل'),
+                    items: widget.data.customerTypes
+                        .map((item) => DropdownMenuItem<String>(
+                              value: item['id'] as String,
+                              child: Text(item['name'] as String),
+                            ))
+                        .toList(),
+                    onChanged: widget.policy == null
+                        ? (value) => setState(() => _targetId = value)
+                        : null,
+                  )
+                else
+                  DropdownButtonFormField<String>(
+                    key: const ValueKey('target-place'),
+                    value: _placeValue,
+                    decoration: const InputDecoration(labelText: 'المنفذ'),
+                    items: widget.data.outlets
+                        .map((item) => DropdownMenuItem<String>(
+                              value: item['id'] as String,
+                              child: Text(item['name'] as String),
+                            ))
+                        .toList(),
+                    onChanged: widget.policy == null ? _choosePlace : null,
                   ),
-                  items: _targets
-                      .map((item) => DropdownMenuItem<String>(
-                            value: item['id'] as String,
-                            child: Text(item['name'] as String),
-                          ))
-                      .toList(),
-                  onChanged: widget.policy == null
-                      ? (value) => setState(() => _targetId = value)
-                      : null,
-                ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _chooseDate,
@@ -441,8 +488,10 @@ class _PolicyEditorState extends State<_PolicyEditor> {
                 ),
                 const SizedBox(height: 12),
                 Text(_isOutlet
-                    ? 'أسعار المنفذ: شراء المصنع وبيع الموزعين المرتبطين'
-                    : 'سعر البيع حسب نوع العميل أو منفذ الاستلام'),
+                    ? 'أسعار المنفذ: سعر شرائه من المصنع وسعر بيعه للمناديب'
+                    : (_scope == 'pickup_location'
+                        ? 'سعر بيع المصنع للمناديب المستلمين منه مباشرة'
+                        : 'سعر البيع العام لنوع العميل')),
                 const SizedBox(height: 8),
                 ...widget.data.products.map((product) {
                   final id = product['id'] as String;
@@ -536,7 +585,7 @@ String _scopeLabel(Map<String, dynamic> policy, _PricingData data) {
   final (idKey, rows, prefix) = switch (scope) {
     'customer_type' => ('customer_type_id', data.customerTypes, 'نوع العميل'),
     'pickup_location' =>
-      ('pickup_location_id', data.pickupLocations, 'منفذ الاستلام'),
+      ('pickup_location_id', data.pickupLocations, 'المصنع'),
     _ => ('external_outlet_id', data.outlets, 'المنفذ الخارجي'),
   };
   final id = policy[idKey];

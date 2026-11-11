@@ -1531,7 +1531,7 @@ class _OrderComposerState extends State<_OrderComposer> {
                       )),
                   const SizedBox(height: 8),
                   Card(
-                    color: const Color(0xffe8f4ef),
+                    color: const Color(0x2222d3b6),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(
