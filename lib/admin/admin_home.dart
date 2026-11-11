@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -8,7 +9,6 @@ import '../theme/alwaha_theme.dart';
 import '../theme/glass_widgets.dart';
 
 /// الصفحة الرئيسية للمدير: أرقام اليوم ورسم المبيعات الشهرية.
-/// [onOpen] يفتح تبويب الشريط السفلي (1 الطلبات، 2 الإنتاج، 3 الحسابات، 4 المزيد).
 class AdminHome extends StatefulWidget {
   const AdminHome({required this.onOpen, super.key});
 
@@ -20,7 +20,7 @@ class AdminHome extends StatefulWidget {
 
 class _AdminHomeState extends State<AdminHome> {
   static final _number = NumberFormat('#,##0', 'en_US');
-  late Future<Map<String, dynamic>> _summary;
+  late Future> _summary;
 
   @override
   void initState() {
@@ -28,7 +28,7 @@ class _AdminHomeState extends State<AdminHome> {
     _summary = _load();
   }
 
-  Future<Map<String, dynamic>> _load() async {
+  Future> _load() async {
     final result =
         await Supabase.instance.client.rpc('admin_dashboard_summary');
     return Map<String, dynamic>.from(result as Map);
@@ -78,7 +78,7 @@ class _AdminHomeState extends State<AdminHome> {
       );
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>>(
+  Widget build(BuildContext context) => FutureBuilder>(
         future: _summary,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -103,7 +103,7 @@ class _AdminHomeState extends State<AdminHome> {
           }
           final data = snapshot.data!;
           final monthly = (data['monthly_sales'] as List? ?? [])
-              .cast<Map<String, dynamic>>();
+              .cast>();
           final values =
               monthly.map((e) => (e['total'] as num).toDouble()).toList();
           final labels = monthly.map((e) => e['month'] as String).toList();
@@ -337,7 +337,7 @@ class _SalesChartPainter extends CustomPainter {
           text: _months[monthIndex.clamp(0, 11)],
           style: const TextStyle(color: AlwahaColors.textMuted, fontSize: 11),
         ),
-        textDirection: TextDirection.rtl,
+        textDirection: ui.TextDirection.rtl,
       )..layout();
       painter.paint(
         canvas,
