@@ -242,12 +242,6 @@ class _PolicyEditorState extends State<_PolicyEditor> {
   bool _saving = false;
   String? _error;
 
-  List<Map<String, dynamic>> get _targets => switch (_scope) {
-        'customer_type' => widget.data.customerTypes,
-        'pickup_location' => widget.data.pickupLocations,
-        _ => widget.data.outlets,
-      };
-
   bool get _isOutlet => _scope == 'external_outlet';
 
   /// واجهة واحدة للمستخدم: «منفذ» (المصنع أو أم بيومي أو بهتيم أو أي منفذ جديد)

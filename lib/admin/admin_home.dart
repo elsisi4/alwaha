@@ -1,5 +1,4 @@
-import 'dart:math' as math;
-import 'dart:ui' as ui;
+import 'dart:math' show max, min;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -8,7 +7,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/alwaha_theme.dart';
 import '../theme/glass_widgets.dart';
 
-/// الصفحة الرئيسية للمدير: أرقام اليوم ورسم المبيعات الشهرية.
+final NumberFormat _adminNumber = NumberFormat('#,##0', 'en_US');
+
+// الصفحة الرئيسية للمدير: أرقام اليوم ورسم المبيعات الشهرية.
+// onOpen يفتح تبويب الشريط السفلي: 1 الطلبات، 2 الإنتاج، 3 الحسابات، 4 المزيد.
 class AdminHome extends StatefulWidget {
   const AdminHome({required this.onOpen, super.key});
 
@@ -19,8 +21,7 @@ class AdminHome extends StatefulWidget {
 }
 
 class _AdminHomeState extends State<AdminHome> {
-  static final _number = NumberFormat('#,##0', 'en_US');
-  late Future> _summary;
+  Future<Map<String, dynamic>>? _summary;
 
   @override
   void initState() {
@@ -28,7 +29,7 @@ class _AdminHomeState extends State<AdminHome> {
     _summary = _load();
   }
 
-  Future> _load() async {
+  Future<Map<String, dynamic>> _load() async {
     final result =
         await Supabase.instance.client.rpc('admin_dashboard_summary');
     return Map<String, dynamic>.from(result as Map);
@@ -65,7 +66,7 @@ class _AdminHomeState extends State<AdminHome> {
                       fontWeight: FontWeight.w700)),
               const SizedBox(height: 2),
               Text(
-                _number.format(value),
+                _adminNumber.format(value),
                 style: TextStyle(
                   color: accent,
                   fontSize: 30,
@@ -78,7 +79,7 @@ class _AdminHomeState extends State<AdminHome> {
       );
 
   @override
-  Widget build(BuildContext context) => FutureBuilder>(
+  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>>(
         future: _summary,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -103,7 +104,7 @@ class _AdminHomeState extends State<AdminHome> {
           }
           final data = snapshot.data!;
           final monthly = (data['monthly_sales'] as List? ?? [])
-              .cast>();
+              .cast<Map<String, dynamic>>();
           final values =
               monthly.map((e) => (e['total'] as num).toDouble()).toList();
           final labels = monthly.map((e) => e['month'] as String).toList();
@@ -188,7 +189,7 @@ class _AdminHomeState extends State<AdminHome> {
                                     color: AlwahaColors.textMuted,
                                     fontWeight: FontWeight.w700)),
                             Text(
-                              '${_number.format(monthTotal)} جنيه',
+                              '${_adminNumber.format(monthTotal)} جنيه',
                               style: const TextStyle(
                                 color: AlwahaColors.sky,
                                 fontSize: 28,
@@ -263,7 +264,7 @@ class _SalesChartPainter extends CustomPainter {
     if (values.isEmpty) return;
     const labelHeight = 22.0;
     final chart = Rect.fromLTWH(0, 6, size.width, size.height - labelHeight - 6);
-    final maxValue = math.max(values.reduce(math.max), 1.0);
+    final maxValue = max(values.reduce(max), 1.0);
 
     final grid = Paint()
       ..color = const Color(0x22ffffff)
@@ -334,10 +335,10 @@ class _SalesChartPainter extends CustomPainter {
       final monthIndex = (int.tryParse(labels[i].split('-').last) ?? 1) - 1;
       final painter = TextPainter(
         text: TextSpan(
-          text: _months[monthIndex.clamp(0, 11)],
+          text: _months[min(11, max(0, monthIndex))],
           style: const TextStyle(color: AlwahaColors.textMuted, fontSize: 11),
         ),
-        textDirection: ui.TextDirection.rtl,
+        textDirection: TextDirection.rtl,
       )..layout();
       painter.paint(
         canvas,
