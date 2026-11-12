@@ -25,7 +25,10 @@ Future<void> runAlWaha(AppMode mode) async {
   final supabaseConfigured = supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 
   if (supabaseConfigured) {
-    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+    await Supabase.initialize(
+      url: supabaseUrl,
+      publishableKey: supabaseAnonKey,
+    );
   }
 
   runApp(AlWahaApp(supabaseConfigured: supabaseConfigured, mode: mode));

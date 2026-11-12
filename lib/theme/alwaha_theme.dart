@@ -75,24 +75,24 @@ ThemeData buildAlwahaTheme() {
       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       minLeadingWidth: 24,
     ),
-    inputDecorationTheme: InputDecorationTheme(
+    inputDecorationTheme: const InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0x1affffff),
-      labelStyle: const TextStyle(color: AlwahaColors.textMuted),
-      border: const OutlineInputBorder(borderRadius: radius16),
-      enabledBorder: const OutlineInputBorder(
+      fillColor: Color(0x1affffff),
+      labelStyle: TextStyle(color: AlwahaColors.textMuted),
+      border: OutlineInputBorder(borderRadius: radius16),
+      enabledBorder: OutlineInputBorder(
         borderRadius: radius16,
         borderSide: BorderSide(color: Color(0x3322d3b6)),
       ),
-      focusedBorder: const OutlineInputBorder(
+      focusedBorder: OutlineInputBorder(
         borderRadius: radius16,
         borderSide: BorderSide(color: teal, width: 1.6),
       ),
-      errorBorder: const OutlineInputBorder(
+      errorBorder: OutlineInputBorder(
         borderRadius: radius16,
         borderSide: BorderSide(color: Color(0xffff6b6b)),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(

@@ -532,7 +532,7 @@ class _OperationalWorkflowsPageState extends State<OperationalWorkflowsPage> {
     _WorkflowData data,
   ) async {
     final reason = await _reasonDialog('سبب قرار المرتجع');
-    if (reason == null) return;
+    if (reason == null || !mounted) return;
     final requestId = request['id'] as String;
     final lines = data.returnLines
         .where((line) => line['return_request_id'] == requestId)
@@ -1406,17 +1406,15 @@ class _OrderComposerState extends State<_OrderComposer> {
       _error = null;
     });
     try {
-      if (_orderId == null) {
-        _orderId = await Supabase.instance.client.rpc(
-          'create_sales_order',
-          params: {
-            'p_pickup_location_id': outlet['pickup_location_id'],
-            'p_external_outlet_id': _outletId,
-            'p_requested_for': _requestedFor.toIso8601String().split('T').first,
-            'p_lines': lines,
-          },
-        ) as String;
-      }
+      _orderId ??= await Supabase.instance.client.rpc(
+        'create_sales_order',
+        params: {
+          'p_pickup_location_id': outlet['pickup_location_id'],
+          'p_external_outlet_id': _outletId,
+          'p_requested_for': _requestedFor.toIso8601String().split('T').first,
+          'p_lines': lines,
+        },
+      ) as String;
       await Supabase.instance.client.rpc(
         'submit_sales_order',
         params: {'p_order_id': _orderId},

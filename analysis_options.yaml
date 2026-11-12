@@ -10,6 +10,9 @@
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
+  errors:
+    # DropdownButtonFormField.value مهجور لكن بديله (initialValue) لا يعكس التغيير البرمجي للقيمة.
+    deprecated_member_use: ignore
   exclude:
     - build/**
     - android/**
@@ -27,6 +30,8 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
+    prefer_const_constructors: false
+    prefer_const_literals_to_create_immutables: false
     # avoid_print: false  # Uncomment to disable the `avoid_print` rule
     # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
 
